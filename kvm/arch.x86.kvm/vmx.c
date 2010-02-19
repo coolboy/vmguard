@@ -2868,7 +2868,7 @@ static int handle_exception(struct kvm_vcpu *vcpu)
 	rip = kvm_rip_read(vcpu);
 	if (intr_info & INTR_INFO_DELIVER_CODE_MASK)
 		error_code = vmcs_read32(VM_EXIT_INTR_ERROR_CODE);
-	if (is_page_fault(intr_info)) {
+	if (is_page_fault(intr_info)) {  //question???
 		/* EPT won't cause page fault directly */
 		if (enable_ept)
 			BUG();
