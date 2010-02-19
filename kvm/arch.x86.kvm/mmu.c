@@ -1571,7 +1571,7 @@ static int kvm_mmu_unprotect_page(struct kvm *kvm, gfn_t gfn)
 {
 	unsigned index;
 	struct hlist_head *bucket;
-	struct kvm_mmu_page *sp;
+	struct kvm_mmu_page *sp; //maybe sp is the shadow page??
 	struct hlist_node *node, *n;
 	int r;
 
@@ -2735,7 +2735,8 @@ void kvm_mmu_pte_write(struct kvm_vcpu *vcpu, gpa_t gpa,
 	}
 }
 
-int kvm_mmu_unprotect_page_virt(struct kvm_vcpu *vcpu, gva_t gva)
+int kvm_mmu_unprotect_page_virt(struct kvm_vcpu *vcpu, gva_t gva) 
+                   //get the guest physical page, and free corresponding shadow page in mmu
 {
 	gpa_t gpa;
 	int r;
@@ -2743,7 +2744,7 @@ int kvm_mmu_unprotect_page_virt(struct kvm_vcpu *vcpu, gva_t gva)
 	if (tdp_enabled)
 		return 0;
 
-	gpa = vcpu->arch.mmu.gva_to_gpa(vcpu, gva);
+	gpa = vcpu->arch.mmu.gva_to_gpa(vcpu, gva);  //address translation from guest-virtual to guest-physical
 
 	spin_lock(&vcpu->kvm->mmu_lock);
 	r = kvm_mmu_unprotect_page(vcpu->kvm, gpa >> PAGE_SHIFT);
