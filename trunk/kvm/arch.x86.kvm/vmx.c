@@ -1,3 +1,4 @@
+// provides interaction with the CPU VMX to the generic KVM layer
 /*
  * Kernel-based Virtual Machine driver for Linux
  *
@@ -3749,6 +3750,7 @@ static void fixup_rmode_irq(struct vcpu_vmx *vmx)
 #define Q "l"
 #endif
 
+// host transfers control from host of guest OS
 static void vmx_vcpu_run(struct kvm_vcpu *vcpu)
 {
 	struct vcpu_vmx *vmx = to_vmx(vcpu);
@@ -3780,6 +3782,7 @@ static void vmx_vcpu_run(struct kvm_vcpu *vcpu)
 	 */
 	vmcs_writel(HOST_CR0, read_cr0());
 
+	// saves the host state and loads the Guest OS CPU state with the stored copy in (vmcs??)
 	asm(
 		/* Store host registers */
 		"push %%"R"dx; push %%"R"bp;"
@@ -3799,7 +3802,7 @@ static void vmx_vcpu_run(struct kvm_vcpu *vcpu)
 		/* Check if vmlaunch of vmresume is needed */
 		"cmpl $0, %c[launched](%0) \n\t"
 		/* Load guest registers.  Don't clobber flags. */
-		"mov %c[rax](%0), %%"R"ax \n\t"
+		"mov %c[rax](%0), %%"R"ax \n\t"		// copies %c[rax](%0) --> Rax
 		"mov %c[rbx](%0), %%"R"bx \n\t"
 		"mov %c[rdx](%0), %%"R"dx \n\t"
 		"mov %c[rsi](%0), %%"R"si \n\t"
@@ -3818,10 +3821,10 @@ static void vmx_vcpu_run(struct kvm_vcpu *vcpu)
 		"mov %c[rcx](%0), %%"R"cx \n\t" /* kills %0 (ecx) */
 
 		/* Enter guest mode */
-		"jne .Llaunched \n\t"
-		__ex(ASM_VMX_VMLAUNCH) "\n\t"
+		"jne .Llaunched \n\t"							// jump to guest OS from host
+		__ex(ASM_VMX_VMLAUNCH) "\n\t"			// launch guest OS to host (first time)
 		"jmp .Lkvm_vmx_return \n\t"
-		".Llaunched: " __ex(ASM_VMX_VMRESUME) "\n\t"
+		".Llaunched: " __ex(ASM_VMX_VMRESUME) "\n\t"	// resume guest OS to host
 		".Lkvm_vmx_return: "
 		/* Save guest registers, load host registers, keep flags */
 		"xchg %0,     (%%"R"sp) \n\t"
@@ -4164,7 +4167,7 @@ static struct kvm_x86_ops vmx_x86_ops = {
 	.update_cr8_intercept = update_cr8_intercept,
 
 	.set_tss_addr = vmx_set_tss_addr,
-	.get_tdp_level = get_ept_level,
+	.get_tdp_level = get_ept_level,			// tdp = ept?
 	.get_mt_mask = vmx_get_mt_mask,
 
 	.exit_reasons_str = vmx_exit_reasons_str,
