@@ -5402,6 +5402,7 @@ void kvm_arch_check_processor_compat(void *rtn)
 	kvm_x86_ops->check_processor_compatibility(rtn);
 }
 
+// initialize the virtual cpu
 int kvm_arch_vcpu_init(struct kvm_vcpu *vcpu)
 {
 	struct page *page;
@@ -5522,6 +5523,7 @@ void kvm_arch_sync_events(struct kvm *kvm)
 	kvm_free_all_assigned_devices(kvm);
 }
 
+// destroys the virtual machine
 void kvm_arch_destroy_vm(struct kvm *kvm)
 {
 	kvm_iommu_unmap_guest(kvm);
@@ -5573,13 +5575,14 @@ int kvm_arch_prepare_memory_region(struct kvm *kvm,
 	return 0;
 }
 
+// kvm instance is passed a lot of times
 void kvm_arch_commit_memory_region(struct kvm *kvm,
 				struct kvm_userspace_memory_region *mem,
 				struct kvm_memory_slot old,
 				int user_alloc)
 {
-
-	int npages = mem->memory_size >> PAGE_SHIFT;
+	
+	int npages = mem->memory_size >> PAGE_SHIFT;	
 
 	if (!user_alloc && !old.user_alloc && old.rmap && !npages) {
 		int ret;
@@ -5588,6 +5591,7 @@ void kvm_arch_commit_memory_region(struct kvm *kvm,
 		ret = do_munmap(current->mm, old.userspace_addr,
 				old.npages * PAGE_SIZE);
 		up_write(&current->mm->mmap_sem);
+	
 		if (ret < 0)
 			printk(KERN_WARNING
 			       "kvm_vm_ioctl_set_memory_region: "
@@ -5599,7 +5603,6 @@ void kvm_arch_commit_memory_region(struct kvm *kvm,
 		unsigned int nr_mmu_pages = kvm_mmu_calculate_mmu_pages(kvm);
 		kvm_mmu_change_mmu_pages(kvm, nr_mmu_pages);
 	}
-
 	kvm_mmu_slot_remove_write_access(kvm, mem->slot);
 	spin_unlock(&kvm->mmu_lock);
 }
@@ -5619,13 +5622,14 @@ int kvm_arch_vcpu_runnable(struct kvm_vcpu *vcpu)
 		 kvm_cpu_has_interrupt(vcpu));
 }
 
+// kick = ??
 void kvm_vcpu_kick(struct kvm_vcpu *vcpu)
 {
 	int me;
 	int cpu = vcpu->cpu;
 
 	if (waitqueue_active(&vcpu->wq)) {
-		wake_up_interruptible(&vcpu->wq);
+		wake_up_interruptible(&vcpu->wq);		// who waits on vcpu waitqueue??
 		++vcpu->stat.halt_wakeup;
 	}
 
@@ -5641,6 +5645,7 @@ int kvm_arch_interrupt_allowed(struct kvm_vcpu *vcpu)
 	return kvm_x86_ops->interrupt_allowed(vcpu);
 }
 
+// real mode flags ??
 unsigned long kvm_get_rflags(struct kvm_vcpu *vcpu)
 {
 	unsigned long rflags;
@@ -5651,6 +5656,7 @@ unsigned long kvm_get_rflags(struct kvm_vcpu *vcpu)
 	return rflags;
 }
 EXPORT_SYMBOL_GPL(kvm_get_rflags);
+
 
 void kvm_set_rflags(struct kvm_vcpu *vcpu, unsigned long rflags)
 {
