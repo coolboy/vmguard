@@ -367,6 +367,57 @@ static int kvm_init_mmu_notifier(struct kvm *kvm)
 
 #endif /* CONFIG_MMU_NOTIFIER && KVM_ARCH_WANT_MMU_NOTIFIER */
 /// this is the function to creat virtual machine
+
+/*
+struct kvm {
+ 154        spinlock_t mmu_lock;
+ 155        spinlock_t requests_lock;
+ 156        struct rw_semaphore slots_lock;
+ 157        struct mm_struct *mm;  userspace tied to this vm 
+ 158        int nmemslots;
+ 159        struct kvm_memory_slot memslots[KVM_MEMORY_SLOTS +   ///KVM_MEMORY_SLOTS is the number of slots used by guest
+ 160                                        KVM_PRIVATE_MEM_SLOTS];///KVM_PRIVATE_MEM_SLOTS is the number of slots used by kvm
+ 161#ifdef CONFIG_KVM_APIC_ARCHITECTURE
+ 162        u32 bsp_vcpu_id;
+ 163        struct kvm_vcpu *bsp_vcpu;
+ 164#endif
+ 165        struct kvm_vcpu *vcpus[KVM_MAX_VCPUS];
+ 166        atomic_t online_vcpus;
+ 167        struct list_head vm_list;
+ 168        struct mutex lock;
+ 169        struct kvm_io_bus mmio_bus;
+ 170        struct kvm_io_bus pio_bus;
+ 171#ifdef CONFIG_HAVE_KVM_EVENTFD
+ 172        struct {
+ 173                spinlock_t        lock;
+ 174                struct list_head  items;
+ 175        } irqfds;
+ 176        struct list_head ioeventfds;
+ 177#endif
+ 178        struct kvm_vm_stat stat;
+ 179        struct kvm_arch arch;
+ 180        atomic_t users_count;
+ 181#ifdef KVM_COALESCED_MMIO_PAGE_OFFSET
+ 182        struct kvm_coalesced_mmio_dev *coalesced_mmio_dev;
+ 183        struct kvm_coalesced_mmio_ring *coalesced_mmio_ring;
+ 184#endif
+ 185
+ 186        struct mutex irq_lock;
+ 187#ifdef CONFIG_HAVE_KVM_IRQCHIP
+ 188        struct kvm_irq_routing_table *irq_routing;
+ 189        struct hlist_head mask_notifier_list;
+ 190        struct hlist_head irq_ack_notifier_list;
+ 191#endif
+ 192
+ 193#ifdef KVM_ARCH_WANT_MMU_NOTIFIER
+ 194        struct mmu_notifier mmu_notifier;
+ 195        unsigned long mmu_notifier_seq;
+ 196        long mmu_notifier_count;
+ 197#endif
+ 198};
+
+*/
+
 static struct kvm *kvm_create_vm(void)
 {
 	int r = 0, i;
@@ -375,7 +426,7 @@ static struct kvm *kvm_create_vm(void)
 	if (IS_ERR(kvm))
 		goto out;
 
-	r = hardware_enable_all();
+	r = hardware_enable_all(); ///simply enable CPU
 	if (r)
 		goto out_err_nodisable;
 
@@ -405,15 +456,15 @@ static struct kvm *kvm_create_vm(void)
 		goto out_err;
 	}
 
-	kvm->mm = current->mm;
-	atomic_inc(&kvm->mm->mm_count);
+	kvm->mm = current->mm; ///kvm now is using same memory context as the current process
+	atomic_inc(&kvm->mm->mm_count); 
 	spin_lock_init(&kvm->mmu_lock);
 	spin_lock_init(&kvm->requests_lock);
 	kvm_eventfd_init(kvm);
 	mutex_init(&kvm->lock);
 	mutex_init(&kvm->irq_lock);
 	mutex_init(&kvm->slots_lock);
-	atomic_set(&kvm->users_count, 1);
+	atomic_set(&kvm->users_count, 1);///the first user
 	spin_lock(&kvm_lock);
 	list_add(&kvm->vm_list, &vm_list);
 	spin_unlock(&kvm_lock);
@@ -897,7 +948,7 @@ unsigned long gfn_to_hva(struct kvm *kvm, gfn_t gfn)
 }
 EXPORT_SYMBOL_GPL(gfn_to_hva);
 
-static pfn_t hva_to_pfn(struct kvm *kvm, unsigned long addr)
+static pfn_t hva_to_pfn(struct kvm *kvm, unsigned long addr) ///this is the host virtual to physical(machine) address
 {
 	struct page *page[1];
 	int npages;
@@ -911,7 +962,7 @@ static pfn_t hva_to_pfn(struct kvm *kvm, unsigned long addr)
 		struct vm_area_struct *vma;
 
 		down_read(&current->mm->mmap_sem);
-		vma = find_vma(current->mm, addr);
+		vma = find_vma(current->mm, addr); ///vma is the virtual memory area
 
 		if (vma == NULL || addr < vma->vm_start ||
 		    !(vma->vm_flags & VM_PFNMAP)) {
@@ -920,7 +971,13 @@ static pfn_t hva_to_pfn(struct kvm *kvm, unsigned long addr)
 			return page_to_pfn(bad_page);
 		}
 
-		pfn = ((addr - vma->vm_start) >> PAGE_SHIFT) + vma->vm_pgoff;
+		pfn = ((addr - vma->vm_start) >> PAGE_SHIFT) + vma->vm_pgoff; ///get the machine address(the machine address should
+		                                                              /// be contiguous mapped to vma)
+		       ///addr is the address inside the guest (the whole maybe composed by many vma)
+		       ///vma->vm_start the start address in host address of this vma
+		       /// PAGE_SHITF page size in bits
+		       /// vma->vm_pgoff the beginning pfn of that vma
+		                                                              ///
 		up_read(&current->mm->mmap_sem);
 		BUG_ON(!kvm_is_mmio_pfn(pfn));
 	} else
@@ -928,12 +985,12 @@ static pfn_t hva_to_pfn(struct kvm *kvm, unsigned long addr)
 
 	return pfn;
 }
-
+/// this has something to do with the guest frame number to physical frame number
 pfn_t gfn_to_pfn(struct kvm *kvm, gfn_t gfn)
 {
 	unsigned long addr;
 
-	addr = gfn_to_hva(kvm, gfn);
+	addr = gfn_to_hva(kvm, gfn);  ///get host virtual address guest frame number 
 	if (kvm_is_error_hva(addr)) {
 		get_page(bad_page);
 		return page_to_pfn(bad_page);
@@ -1769,7 +1826,7 @@ static long kvm_dev_ioctl(struct file *filp,
 			goto out;
 		r = KVM_API_VERSION;
 		break;
-	case KVM_CREATE_VM:
+	case KVM_CREATE_VM: ///when the use lauch a vm, it comes here
 		r = -EINVAL;
 		if (arg)
 			goto out;

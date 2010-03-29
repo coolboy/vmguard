@@ -5473,13 +5473,13 @@ struct  kvm *kvm_arch_create_vm(void)
 	if (!kvm)
 		return ERR_PTR(-ENOMEM);
 
-	kvm->arch.aliases = kzalloc(sizeof(struct kvm_mem_aliases), GFP_KERNEL);
+	kvm->arch.aliases = kzalloc(sizeof(struct kvm_mem_aliases), GFP_KERNEL); ///?
 	if (!kvm->arch.aliases) {
-		kfree(kvm);
+		kfree(kvm);   
 		return ERR_PTR(-ENOMEM);
 	}
 
-	INIT_LIST_HEAD(&kvm->arch.active_mmu_pages);
+	INIT_LIST_HEAD(&kvm->arch.active_mmu_pages);///initialize the mmu pages
 	INIT_LIST_HEAD(&kvm->arch.assigned_dev_head);
 
 	/* Reserve bit 0 of irq_sources_bitmap for userspace irq source */
