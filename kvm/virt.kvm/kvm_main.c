@@ -366,7 +366,7 @@ static int kvm_init_mmu_notifier(struct kvm *kvm)
 }
 
 #endif /* CONFIG_MMU_NOTIFIER && KVM_ARCH_WANT_MMU_NOTIFIER */
-
+/// this is the function to creat virtual machine
 static struct kvm *kvm_create_vm(void)
 {
 	int r = 0, i;
