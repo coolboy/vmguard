@@ -150,7 +150,7 @@ struct kvm_irq_routing_table {};
 
 #endif
 
-struct kvm {
+struct kvm {/// each vm has a kvm struct ?
 	spinlock_t mmu_lock;
 	spinlock_t requests_lock;
 	struct rw_semaphore slots_lock;
